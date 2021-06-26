@@ -3,6 +3,8 @@ import logging
 import os
 import re
 import subprocess
+import random
+import string
 
 from argparse import ArgumentParser
 from typing import Dict, List, Optional
@@ -22,6 +24,8 @@ logging.basicConfig(
 )
 
 kp: Optional[PyKeePass] = None
+# random string to prefix custom fields for entries like cards to avoid overwriting user fields
+CUSTOM_FIELD_PREFIX = ''.join((random.choice(string.ascii_letters) for i in range(5)))
 
 def bitwarden_to_keepass(args):
     global kp
@@ -43,10 +47,6 @@ def bitwarden_to_keepass(args):
     items = json.loads(items)
     logging.info(f'Starting to process {len(items)} items.')
     for item in items:
-        if item['type'] in [ItemTypes.CARD, ItemTypes.IDENTITY]:
-            logging.warning(f'Skipping credit card or identity item "{item["name"]}".')
-            continue
-
         bw_item = Item(item)
 
         is_duplicate_title = False
@@ -78,6 +78,14 @@ def bitwarden_to_keepass(args):
 
             for field in bw_item.get_custom_fields():
                 entry.set_custom_property(field['name'], field['value'])
+
+            for card_field_name, card_field_val in bw_item.get_card().items():
+                if card_field_val is not None:
+                    entry.set_custom_property(f"{CUSTOM_FIELD_PREFIX}_CARD_{card_field_name}", card_field_val)
+
+            for identity_field_name, identity_field_val in bw_item.get_identity().items():
+                if identity_field_val is not None:
+                    entry.set_custom_property(f"{CUSTOM_FIELD_PREFIX}_IDENTITY_{identity_field_name}", identity_field_val)
 
             for attachment in bw_item.get_attachments():
                 attachment_raw = subprocess.check_output([

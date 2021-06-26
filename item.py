@@ -76,3 +76,15 @@ class Item:
         secret = params.get('secret', self.item['login']['totp'])
 
         return secret, f'{period};{digits}'
+
+    def get_card(self):
+        if 'card' not in self.item:
+            return {}
+
+        return self.item['card']
+
+    def get_identity(self):
+        if 'identity' not in self.item:
+            return {}
+
+        return self.item['identity']
